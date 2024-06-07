@@ -46,13 +46,13 @@ class FilePart(object):
         self.headers = None
         self.file = None
 
-    def headerKey(self, name: bytes) -> str:
+    def headerKey(self, name: str) -> str:
         for header in self.headers:
             headerStart = header.find(name)
             if headerStart >= 0:
-                valueStart = header.find(b'"', headerStart) + 1
-                valueEnd = header.find(b'"', valueStart)
-                return header[valueStart:valueEnd].decode('utf-8')
+                valueStart = header.find('"', headerStart) + 1
+                valueEnd = header.find('"', valueStart)
+                return header[valueStart:valueEnd]
         return None
 
     def onData(self, data: bytes):
@@ -67,13 +67,16 @@ class FilePart(object):
             self.buffer.extend(data)
             partHeadersEnd = self.buffer.find(b'\r\n\r\n')
             if partHeadersEnd >= 0:
-                self.headers = splitLines(self.buffer[0:partHeadersEnd])
-                self.file = self.headerKey(b'filename') + '.out'
+                self.headers = self.buffer[0:partHeadersEnd].decode('utf-8').split('\r\n')
+                self.file = self.headerKey('filename') + '.out'
                 with open(self.file, 'wb') as file:  # creates new file
                     file.write(self.buffer[partHeadersEnd + 4:])
 
     def close(self):
         log('part %s close %d bytes: %s' % (self, len(self.buffer), bytes_to_hex_string(self.buffer)))
+
+    def __str__(self) -> str:
+        return 'FilePart %s' % self.file
 
 class MultiPartReader(object):
     def __init__(self, contentType: str) -> None:
